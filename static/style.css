@@ -55,3 +55,10 @@ a.link:hover {
   pointer-events: none;
   background: #999;
 }
+
+.logo {
+  background-image: url("/static/GitHub-Mark-Light-32px.png");
+  background-repeat: no-repeat;
+  background-position: 0.8em;
+  padding-left: 3.5em;
+}
