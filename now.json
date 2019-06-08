@@ -8,5 +8,11 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "/" }
-  ]
+  ],
+  "env": {
+    "SECRET_KEY": "@autofork-key",
+    "GITHUB_OAUTH_CLIENT_ID": "@autofork-id",
+    "GITHUB_OAUTH_CLIENT_SECRET": "@autofork-secret",
+    "GITHUB_ORIGIN": "git@github.com:hey-sancho/autofork.git"
+  }
 }
