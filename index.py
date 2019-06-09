@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,21 +11,7 @@ BASEDIR = Path(__file__).parents[1]
 for env in (".flaskenv", ".env"):
     load_dotenv(BASEDIR / env)
 
-
-ORIGIN = os.getenv("GITHUB_ORIGIN", "")
-
-# app
-github_bp = make_github_blueprint(
-    client_id=os.getenv("GITHUB_OAUTH_CLIENT_ID", "secret-agent"),
-    client_secret=os.getenv("GITHUB_OAUTH_CLIENT_SECRET", "agent-secret"),
-    scope="public_repo,read:user",
-    login_url="/",
-    authorized_url="/authorized",
-)
-
-app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "skeleton-key")
-app.register_blueprint(github_bp, url_prefix="/login")
+USERNAME_RE = re.compile(r"^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$")
 
 
 def button(text, url, logo=None):
@@ -33,14 +20,49 @@ def button(text, url, logo=None):
     return f"""<a href="{url}" class="button">{text}</a>"""
 
 
-def git_to_url(text):
-    if text.startswith("git@"):
-        text = text.replace(":", "/").replace("git@", "https://")
+class Autofork(Flask):
+    def __init__(self):
+        super().__init__(__name__, template_folder="static")
 
-    if text.startswith("https://"):
-        return text[:-4] if text.endswith(".git") else text
+        self.url_map.strict_slashes = False
+        self.secret_key = os.getenv("SECRET_KEY", "skeleton-key")
+        self.load_config()
 
-    return make_response(f"Invalid GitHub repo origin URL: `{text}`", 500)
+        github_bp = make_github_blueprint(
+            scope="public_repo,read:user", login_url="/", authorized_url="/authorized"
+        )
+        self.register_blueprint(github_bp, url_prefix="/login")
+
+    def load_config(self):
+        origin = url = os.getenv("GITHUB_ORIGIN", "")
+        if not url.endswith(".git"):
+            raise ValueError(f"Invalid GitHub repo origin URL: `{url}`")
+
+        url = url[:-4]
+        if url.startswith("git@"):
+            *_, user_repo = url.partition(":")
+            user, _, repo = user_repo.partition("/")
+            if not USERNAME_RE.match(user):
+                raise ValueError(f"Invalid GitHub username: `{user}`")
+
+            url = url.replace(":", "/").replace("git@", "https://")
+
+        elif url.startswith("https://"):
+            _, user, repo = url.rsplit("/", maxsplit=2)
+
+        else:
+            raise ValueError(f"Unsupported GitHub repo origin URL: `{url}`")
+
+        self.config["AUTOFORK_ORIGIN"] = origin
+        self.config["AUTOFORK_URL"] = url
+        self.config["AUTOFORK_USER"] = user
+        self.config["AUTOFORK_REPO"] = repo
+
+        self.config["GITHUB_OAUTH_CLIENT_ID"] = os.getenv("GITHUB_OAUTH_CLIENT_ID")
+        self.config["GITHUB_OAUTH_CLIENT_SECRET"] = os.getenv("GITHUB_OAUTH_CLIENT_SECRET")
+
+
+app = Autofork()
 
 
 @app.route("/")
