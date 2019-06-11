@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>An unexpected error has occurred</h1>
+<p>Sorry for the inconvenience :(</p>
+<p class="info">Here's the error we couldn't avoid:</p>
+<p class="wrap details">{{ details }}</p>
+<p>We'll do better next time!</p>
+<p><a class="button" href="{{ url_for('index') }}">Go back</a></p>
+{% endblock %}

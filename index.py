@@ -3,21 +3,15 @@ import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, make_response, redirect, session, url_for
+from flask import Flask, flash, make_response, redirect, render_template, session, url_for
 from flask_dance.contrib.github import github, make_github_blueprint
 
-# load env
+# ENV
 BASEDIR = Path(__file__).parents[1]
 for env in (".flaskenv", ".env"):
     load_dotenv(BASEDIR / env)
 
 USERNAME_RE = re.compile(r"^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$")
-
-
-def button(text, url, logo=None):
-    if logo:
-        return f"""<a href="{url}" class="logo button">{text}</a>"""
-    return f"""<a href="{url}" class="button">{text}</a>"""
 
 
 class Autofork(Flask):
@@ -65,26 +59,21 @@ class Autofork(Flask):
 app = Autofork()
 
 
+@app.errorhandler(500)
+def handle_errors(e):
+    return make_response(render_template("error.html", details=str(e)), 500)
+
+
 @app.route("/")
 def index():
-    body = f"""<link rel="stylesheet" href="/static/style.css" />
-    <h1>Autofork</h1>
-    <p>This application forks itself into authorized GitHub account.</p>
-    """
+    username = None
 
-    if not github.authorized:
-        sign_in = button("Sign in with GitHub", url_for("github.login"), logo=True)
-        return make_response(body + sign_in)
+    if github.authorized:
+        resp = github.get("/user")
+        assert resp.ok, resp.text
+        username = resp.json()["login"]
 
-    resp = github.get("/user")
-    assert resp.ok, resp.text
-
-    login = resp.json()["login"]
-    fork = button("Fork", url_for("fork"), logo=True)
-    sign_out = button("Sign out", url_for("logout"))
-
-    info = f"<div>You are @{login} on GitHub</div>"
-    return make_response("".join(body, info, fork, sign_out))
+    return make_response(render_template("index.html", username=username))
 
 
 @app.route("/fork")
@@ -95,4 +84,5 @@ def fork():
 @app.route("/logout")
 def logout():
     session.clear()
+    flash("Successfully logged out", "info")
     return redirect(url_for("index"))

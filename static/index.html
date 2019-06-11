@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Autofork</h1>
+<p>
+    <a class="link" href="{{ config['AUTOFORK_URL'] }}">This application</a>
+    forks itself into authorized GitHub account.
+</p>
+
+{% set gh = 'https://github.com' %}
+{% set settings = gh + '/settings/connections/applications/' + config['GITHUB_OAUTH_CLIENT_ID'] %}
+
+{% if username %}
+<p>Signed in as <a class="link" href="{{ gh }}/{{ username }}">@{{ username }}</a></p>
+
+<div class="buttons">
+    <a class="logo button" href="{{ url_for('fork') }}">Fork</a>
+    <a class="logo button" href="{{ settings }}" target="_blank" rel="noopener">Settings</a>
+    <a class="button" href="{{ url_for('logout') }}">Sign out</a>
+</div>
+
+{% else %}
+<p>Please sign in with your GitHub account.</p>
+
+<div class="buttons">
+    <a href="{{ url_for('github.login') }}" class="logo button">Sign in with GitHub</a>
+</div>
+
+{% endif %}
+
+{% with messages = get_flashed_messages(True) %}
+{% for category, message in messages %}
+<p class="{{ category }}">{{ message }}</p>
+{% endfor %}
+{% endwith %}
+{% endblock %}

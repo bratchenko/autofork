@@ -30,7 +30,7 @@ a.link:hover {
   border-radius: 5px;
   vertical-align: middle;
   white-space: normal;
-  font-size: 1rem;
+  font-size: 1em;
   font-family: inherit;
   padding: 0.65em 1em;
   background: #171516;
@@ -61,4 +61,20 @@ a.link:hover {
   background-repeat: no-repeat;
   background-position: 0.8em;
   padding-left: 3.5em;
+}
+.details {
+  font-family: monospace;
+  font-size: 0.7em;
+  white-space: pre;
+  margin: 0;
+}
+.wrap {
+  white-space: pre-wrap;
+}
+.info {
+  font-weight: 700;
+  margin-bottom: 0;
+}
+.error {
+  color: #b71c1c;
 }
