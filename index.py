@@ -72,8 +72,7 @@ def index():
 
     if github.authorized:
         resp = github.get("/user")
-        assert resp.ok, resp.text
-        username = resp.json()["login"]
+        username = resp.json().get("login")
 
     return make_response(render_template("index.html", username=username))
 
@@ -108,6 +107,24 @@ def fork():
 
 @app.route("/logout")
 def logout():
+    access_token = github.token["access_token"]
+    cfg = app.config.get_namespace("GITHUB_OAUTH_")
+    client_id = cfg["client_id"]
+    resp = requests.delete(
+        f"https://api.github.com/applications/{client_id}/grants/{access_token}",
+        auth=(client_id, cfg["client_secret"]),
+    )
+    if resp.status_code == 204:
+        flash("Successfully logged out", "info")
+    else:
+        details = json.dumps(resp.json() or "", indent=2)
+        url = f"https://github.com/settings/connections/applications/{client_id}"
+        settings = f'<a class="link" target="_blank" rel="noopener" href="{url}">settings</a>'
+        message = Markup(
+            f"Couldn't revoke GitHub application access, please try manually in {settings}"
+        )
+        flash(message, "error info")
+        flash(details, "details")
+
     session.clear()
-    flash("Successfully logged out", "info")
     return redirect(url_for("index"))
