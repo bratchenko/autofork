@@ -1,9 +1,11 @@
+import json
 import os
 import re
 from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
-from flask import Flask, flash, make_response, redirect, render_template, session, url_for
+from flask import Flask, Markup, flash, make_response, redirect, render_template, session, url_for
 from flask_dance.contrib.github import github, make_github_blueprint
 
 # ENV
@@ -78,7 +80,30 @@ def index():
 
 @app.route("/fork")
 def fork():
-    return make_response("GitHub origin to fork is not specified", 500)
+    if not github.authorized:
+        flash("Not authorized. Please sign in first.", "error")
+        return redirect(url_for("index"))
+
+    cfg = app.config.get_namespace("AUTOFORK_")
+    user = cfg["user"]
+    repo = cfg["repo"]
+    fork_ep = f"https://api.github.com/repos/{user}/{repo}/forks"
+
+    resp = requests.post(fork_ep)
+    body = resp.json()
+
+    if resp:
+        html_url = body.get("html_url")
+        link = f'<a class="link" target="_blank" rel="noopener" href="{html_url}">{html_url}</a>'
+        message = Markup(f"Successfully forked {repo} to {link}")
+        flash(message, "info")
+    else:
+        message = f"Couldn't fork {fork_ep}:"
+        details = json.dumps(body, indent=2)
+        flash(message, "error info")
+        flash(details, "details")
+
+    return redirect(url_for("index"))
 
 
 @app.route("/logout")
