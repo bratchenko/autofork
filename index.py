@@ -3,7 +3,6 @@ import os
 import re
 from pathlib import Path
 
-import requests
 from dotenv import load_dotenv
 from flask import Flask, Markup, flash, make_response, redirect, render_template, session, url_for
 from flask_dance.contrib.github import github, make_github_blueprint
@@ -86,21 +85,26 @@ def fork():
     cfg = app.config.get_namespace("AUTOFORK_")
     user = cfg["user"]
     repo = cfg["repo"]
-    fork_ep = f"https://api.github.com/repos/{user}/{repo}/forks"
 
-    resp = requests.post(fork_ep)
+    resp = github.post(f"/repos/{user}/{repo}/forks")
     body = resp.json()
 
-    if resp:
-        html_url = body.get("html_url")
-        link = f'<a class="link" target="_blank" rel="noopener" href="{html_url}">{html_url}</a>'
-        message = Markup(f"Successfully forked {repo} to {link}")
-        flash(message, "info")
-    else:
-        message = f"Couldn't fork {fork_ep}:"
+    link = '<a class="link" target="_blank" rel="noopener" href="{link}">{name}</a>'.format
+    if not resp:
+        message = f"Couldn't fork {user}/{repo}:"
         details = json.dumps(body, indent=2)
         flash(message, "error info")
-        flash(details, "details")
+        flash(details, 'details')
+    else:
+        is_fork = body.get("fork")
+        html_url = body.get("html_url")
+
+        if is_fork:
+            url = link(link=html_url, name=html_url)
+            flash(Markup(f"Successfully forked {repo} to {url}"), "info")
+        else:
+            url = link(link=html_url, name=f'{user}/{repo}')
+            flash(Markup(f"You already have a copy of {url}"), "info")
 
     return redirect(url_for("index"))
 
@@ -110,10 +114,8 @@ def logout():
     access_token = github.token["access_token"]
     cfg = app.config.get_namespace("GITHUB_OAUTH_")
     client_id = cfg["client_id"]
-    resp = requests.delete(
-        f"https://api.github.com/applications/{client_id}/grants/{access_token}",
-        auth=(client_id, cfg["client_secret"]),
-    )
+    resp = github.delete(f"/applications/{client_id}/grants/{access_token}")
+
     if resp.status_code == 204:
         flash("Successfully logged out", "info")
     else:
